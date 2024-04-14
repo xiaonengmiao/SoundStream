@@ -155,8 +155,8 @@ class SoundStream(nn.Module):
     
     def forward(self, x):
         e = self.encoder(x)
-        quantized, _, _ = self.quantizer(e)
-        o = self.decoder(quantized)
+        quantized, _, _ = self.quantizer(e.permute(0, 2, 1))
+        o = self.decoder(quantized.permute(0, 2, 1))
         return o
 
 # Wave-based Discriminator
