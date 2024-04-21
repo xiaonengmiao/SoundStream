@@ -6,9 +6,8 @@ from torch.utils.data import DataLoader
 from torchaudio.transforms import MelSpectrogram
 from tqdm import tqdm
 
-from net import SoundStream, WaveDiscriminator, STFTDiscriminator
 from dataset import NSynthDataset
-
+from net import SoundStream, STFTDiscriminator, WaveDiscriminator
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -22,6 +21,13 @@ soundstream = SoundStream(C=32, D=256, n_q=4, codebook_size=1024)
 wave_disc = WaveDiscriminator(num_D=3, downsampling_factor=2)
 W, H = 1024, 256
 stft_disc = STFTDiscriminator(C=32, F_bins=W//2)
+
+# TODO: fix this -1 to 1, this is for loading pretrained model only
+if torch.cuda.device_count() > 1:
+    print("Let's use", torch.cuda.device_count(), "GPUs!")
+    soundstream = torch.nn.DataParallel(soundstream)
+    wave_disc = torch.nn.DataParallel(wave_disc)
+    stft_disc = torch.nn.DataParallel(stft_disc)
 
 soundstream.to(device)
 wave_disc.to(device)
@@ -89,6 +95,7 @@ def adversarial_d_loss(features_stft_disc_x, features_wave_disc_x, features_stft
 
 if __name__ == "__main__":
     import logging
+
     from log import init_log
     init_log("SoundStream", logging.DEBUG)
     logger = logging.getLogger("Main")
@@ -249,6 +256,6 @@ if __name__ == "__main__":
             history["test"]["d"].append(test_loss_d/len(test_loader))
             history["test"]["g"].append(test_loss_g/len(test_loader))
     
-    log_txt = f"[Epoch] {epoch:03d} "
+    log_txt = f"[Epoch] {epoch:03d} [train:dloss] {train_loss_d/len(train_loader):.04f} [train:gloss] {train_loss_g/len(train_loader):.04f} [test:dloss] {test_loss_d/len(train_loader):.04f} [test:gloss] {test_loss_g/len(train_loader):.04f}"
     logger.info(log_txt)
             
